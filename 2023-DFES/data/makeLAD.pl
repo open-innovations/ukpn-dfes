@@ -39,27 +39,67 @@ foreach $line (@geolines){
 }
 
 
-$lads;
+$lad_msoa;
+$lad_lsoa;
+$msoa_lsoa;
 
-open(JSON,">:utf8","lsoa2lad.json");
-print JSON "{";
+#open(JSON,">:utf8","lsoa2lad.json");
+#print JSON "{";
 $n = 0;
 foreach $lsoa (sort(keys(%{$lsoas}))){
 	if($lsoas->{$lsoa}{'LAD23CD'} && $lsoas->{$lsoa}{'keep'}){
-		push(@{$lads->{$lsoas->{$lsoa}{'LAD23CD'}}},"\"".$lsoas->{$lsoa}{'MSOA21CD'}."\"");
-		print JSON ($n > 0 ? ",":"")."\n\t"."\"$lsoa\":\{\"$lsoas->{$lsoa}{'LAD23CD'}\":1\}";
-		$n++;
+		push(@{$lad_msoa->{$lsoas->{$lsoa}{'LAD23CD'}}},"\"".$lsoas->{$lsoa}{'MSOA21CD'}."\"");
+		push(@{$lad_lsoa->{$lsoas->{$lsoa}{'LAD23CD'}}},"\"".$lsoa."\"");
+		push(@{$msoa_lsoa->{$lsoas->{$lsoa}{'MSOA21CD'}}},"\"".$lsoa."\"");
+#		print JSON ($n > 0 ? ",":"")."\n\t"."\"$lsoa\":\{\"$lsoas->{$lsoa}{'LAD23CD'}\":1\}";
+#		$n++;
 	}
+}
+#print JSON "}\n";
+#close(JSON);
+
+
+
+# Create a compact version of the LSOA to LAD mapping
+open(JSON,">:utf8","lsoa2lad-compact.json");
+print JSON "{";
+$n = 0;
+foreach $lad (sort(keys(%{$lad_lsoa}))){
+	print JSON ($n > 0 ? ",":"")."\n\t\"$lad\":[".join(",",@{$lad_lsoa->{$lad}})."]";
+	$n++;
 }
 print JSON "}\n";
 close(JSON);
 
 
-open(JSON,">:utf8","msoa2lad.json");
+# Create a compact version of the MSOA to LAD mapping
+open(JSON,">:utf8","msoa2lad-compact.json");
 print JSON "{";
 $n = 0;
-foreach $lad (sort(keys(%{$lads}))){
-	print JSON ($n > 0 ? ",":"")."\n\t\"$lad\":[".join(",",@{$lads->{$lad}})."]";
+foreach $lad (sort(keys(%{$lad_msoa}))){
+	print JSON ($n > 0 ? ",":"")."\n\t\"$lad\":[".join(",",@{$lad_msoa->{$lad}})."]";
+	$n++;
+}
+print JSON "}\n";
+close(JSON);
+
+
+# Create a compact version of the LSOA to MSOA mapping
+open(JSON,">:utf8","msoa2lsoa.json");
+print JSON "{";
+$n = 0;
+foreach $msoa (sort(keys(%{$msoa_lsoa}))){
+	#	"E02000001":{"E01000001": 0.167,"E01000002": 0.167,"E01000003": 0.167,"E01000005": 0.167,"E01032739": 0.167,"E01032740": 0.167},
+
+	print JSON ($n > 0 ? ",":"")."\n\t\"$msoa\":{";
+	$j = 0;
+	$n = @{$msoa_lsoa->{$msoa}};
+	foreach $lsoa (sort(@{$msoa_lsoa->{$msoa}})){
+		print JSON ($j > 0 ? ",":"").$lsoa.": ".sprintf("%0.3f",1/$n);
+		$j++;
+	}
+	print JSON "}";
+	$n++;
 }
 print JSON "}\n";
 close(JSON);
